@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Máy tính</string>
+    <string name="errorClickDot">Bạn không thể ấn vào nút [.]</string>
+    <string name="errorClickNeg">Bạn không thể ấn vào nút [+/-] khi vừa ấn [.]</string>
+</resources>
