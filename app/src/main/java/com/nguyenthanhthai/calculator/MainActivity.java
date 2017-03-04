@@ -9,8 +9,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import net.objecthunter.exp4j.Expression;
-import net.objecthunter.exp4j.ExpressionBuilder;
+import com.nguyenthanhthai.utils.Expression;
 
 import java.util.Stack;
 
@@ -38,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
     int braketOpen = 0;
     boolean dotFloat = false; //bằng true khi vừa nhấn . chưa thoát khỏi số, cho phép nhập . khi dotFloat = flase
 
-    //trạng thái các nút ấn
+    //trạng thái các nút ấn, tương ứng với Class Token
     enum EnumStatus {
         NumberClick, DotClick, Negativite, Bracket, OperatorClick
     }
@@ -374,19 +373,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         try {
-            // Create an Expression (A class from exp4j library) // build.gradle compile 'net.objecthunter:exp4j:0.4.8'
-            Expression expressionBuilder = new ExpressionBuilder(expression).build();
-            // Calculate the result and display
-            double result = expressionBuilder.evaluate();
+            //thực hiện chuyển đổi về biểu thức hậu tự và tính
+            Expression expressionEvaluate = new Expression(expression);
+            //Xuất kết quả
+            double result = expressionEvaluate.evaluate();
             viewExpression(result);
         } catch (Exception e) {
             if (e.toString().compareTo("java.lang.ArithmeticException: Division by zero!") == 0)
                 viewError("Không thể chia cho 0");
             else {
                 viewError("Lỗi công thức không thể tính!!!");
-                viewError("\n"+expression);
+                viewError("\n" + expression);
             }
-            expression = temp;temp = temp.replace("/", "<font COLOR='BLUE'>" + "÷" + "</font>");
+            expression = temp;
+            temp = temp.replace("/", "<font COLOR='BLUE'>" + "÷" + "</font>");
             temp = temp.replace("*", "<font COLOR='BLUE'>" + "x" + "</font>");
             temp = temp.replace("+", "<font COLOR='BLUE'>" + "+" + "</font>");
             temp = temp.replace("-", "<font COLOR='BLUE'>" + "-" + "</font>");
@@ -403,42 +403,98 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void viewExpression(double result) {
+        dotFloat = false;
         String temp = "";
         temp = expression;
+        if (temp.length() > 20)
+            temp = insertBr(temp);
         if (temp != null && !temp.isEmpty()) {
-
+            temp = temp.replace("/", "<font COLOR='BLUE'>" + "÷" + "</font>");
+            temp = temp.replace("*", "<font COLOR='BLUE'>" + "x" + "</font>");
+            temp = temp.replace("+", "<font COLOR='BLUE'>" + "+" + "</font>");
+            temp = temp.replace("-", "<font COLOR='BLUE'>" + "-" + "</font>");
+            temp = temp.replace("<br>", "<br/>");
+        } else {
+            return;
         }
 
+        String resultView = "";
+        int indexEndDot;
         if ((long) result == result) {
-            temp += "<br/><font COLOR='GREEN'>" + "= " + ((long) result) + "</font>";
-        } else temp += "<br/><font COLOR='GREEN'>" + "= " + Double.toString(result) + "</font>";
-        temp = temp.replace(".", ",");
+            resultView = String.valueOf((long) result).toString();
+            indexEndDot = resultView.length() - 4;
+        } else {
+            resultView = String.valueOf(result).toString();
+            indexEndDot = resultView.indexOf('.') - 4;
+        }
+
+        while (indexEndDot > -1) {
+            resultView = resultView.substring(0, indexEndDot + 1) + "," + resultView.substring(indexEndDot + 1);
+            indexEndDot -= 3;
+        }
+
+        temp += "<br/><font COLOR='GREEN'>" + "= " + resultView + "</font>";
 
 //        if (expression.length() > 20)
 //            textViewExpression.setTextSize(20);
 //        else textViewExpression.setTextSize(30);
         textViewExpression.setText(Html.fromHtml(temp));
-        textViewExpression.getSelectionEnd();
+    }
+
+    private String insertBr(String temp) {
+        int indexInsert = 20;
+        int i = 1;
+        while (indexInsert < temp.length()) {
+            boolean checkOper = false;
+            while (indexInsert > 0) {
+                if (isOperator(temp.charAt(indexInsert))) {
+                    if (temp.lastIndexOf("<br>") < indexInsert - 5) {
+                        temp = temp.substring(0, indexInsert) + "<br>" + temp.substring(indexInsert);
+                        checkOper = true;
+                    } else
+                        indexInsert += 1;
+                    break;
+                }
+                indexInsert--;
+            }
+            if (checkOper == true) {
+                indexInsert += 20;
+            } else {
+                i++;
+                indexInsert = indexInsert + 20 * i;
+            }
+        }
+        return temp;
+    }
+
+    private boolean isOperator(char c) {
+        if (c == '+' || c == '-' || c == '*' || c == '/')
+            return true;
+        return false;
     }
 
     private void viewExpression() {
         textViewExpression.refreshDrawableState();
         String temp = new String();
         temp = expression;
+        if (temp.length() > 20)
+            temp = insertBr(temp);
         if (temp != null && !temp.isEmpty()) {
             temp = temp.replace("/", "<font COLOR='BLUE'>" + "÷" + "</font>");
             temp = temp.replace("*", "<font COLOR='BLUE'>" + "x" + "</font>");
             temp = temp.replace("+", "<font COLOR='BLUE'>" + "+" + "</font>");
             temp = temp.replace("-", "<font COLOR='BLUE'>" + "-" + "</font>");
+            temp = temp.replace("<br>", "<br/>");
+        } else {
+            resetAll();
+            return;
         }
-        temp = temp.replace(".", ",");
+
 //        if (expression.length() > 20)
 //            textViewExpression.setTextSize(20);
 //        else textViewExpression.setTextSize(30);
-
+        temp+="<br/>";
         textViewExpression.setText(Html.fromHtml(temp));
-        textViewExpression.getSelectionEnd();
-
     }
 
     public void onClickClear(View view) {
@@ -453,6 +509,7 @@ public class MainActivity extends AppCompatActivity {
         braketOpen = 0;
         negavitionOpen = false;
         checkResult = false;
+        dotFloat = false;
         textViewExpression.setText("");
         textViewExpression.refreshDrawableState();
     }
@@ -462,6 +519,9 @@ public class MainActivity extends AppCompatActivity {
         if (expression.isEmpty())
             return;
         EnumStatus temp = statusBeforClick.pop();
+        if (temp == EnumStatus.DotClick) {
+            dotFloat = false;
+        }
         if (temp == EnumStatus.Negativite) {
             backSpaceChar();
             braketOpen--;
@@ -478,36 +538,31 @@ public class MainActivity extends AppCompatActivity {
         viewExpression();
     }
 
-
+    //Lưu dữ liệu ở activity lại
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
-
-        // Save UI state changes to the savedInstanceState.
-        // This bundle will be passed to onCreate if the process is
-        // killed and restarted.
-
         savedInstanceState.putString("expression", expression);
-        savedInstanceState.putBoolean ("checkResult", checkResult);
-        savedInstanceState.putBoolean ("negavitionOpen", negavitionOpen);
-        savedInstanceState.putInt ("braketOpen", braketOpen);
-        savedInstanceState.putBoolean ("dotFloat", dotFloat);
-        savedInstanceState.putSerializable ("statusBeforClick", statusBeforClick);
+        savedInstanceState.putBoolean("checkResult", checkResult);
+        savedInstanceState.putBoolean("negavitionOpen", negavitionOpen);
+        savedInstanceState.putInt("braketOpen", braketOpen);
+        savedInstanceState.putBoolean("dotFloat", dotFloat);
+        savedInstanceState.putSerializable("statusBeforClick", statusBeforClick);
 
         super.onSaveInstanceState(savedInstanceState);
     }
-    //onRestoreInstanceState
+
+    //Get dữ liệu khi onResum
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-         expression=savedInstanceState.getString("expression");
+        expression = savedInstanceState.getString("expression");
         checkResult = savedInstanceState.getBoolean("checkResult");
-        negavitionOpen  = savedInstanceState.getBoolean("negavitionOpen");;
+        negavitionOpen = savedInstanceState.getBoolean("negavitionOpen");
         braketOpen = savedInstanceState.getInt("braketOpen");
-         dotFloat = savedInstanceState.getBoolean("dotFloat");
-        statusBeforClick= (Stack<EnumStatus>) savedInstanceState.getSerializable("statusBeforClick");
-        if (checkResult){
+        dotFloat = savedInstanceState.getBoolean("dotFloat");
+        statusBeforClick = (Stack<EnumStatus>) savedInstanceState.getSerializable("statusBeforClick");
+        if (checkResult) {
             viewExpression();
-        }
-        else viewExpression();
+        } else viewExpression();
     }
 }
