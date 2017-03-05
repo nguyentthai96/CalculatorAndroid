@@ -110,6 +110,9 @@ public class MainActivity extends AppCompatActivity {
                                 braketOpen++;
                                 statusBeforClick.push(EnumStatus.Bracket);
                             } else {
+                                if(negavitionOpen==true){
+                                    negavitionOpen=false;
+                                }
                                 expression += ")";
                                 braketOpen--;
                                 statusBeforClick.push(EnumStatus.Bracket);
@@ -212,24 +215,38 @@ public class MainActivity extends AppCompatActivity {
             int indexNeg = expression.lastIndexOf("(-");
             expression = expression.substring(0, indexNeg) + expression.substring(indexNeg + 2);
             braketOpen--;
+            negavitionOpen =false;
         } else {
             //Tìm vị trí cuối cùng mà có dấu ( (cũng tức là dấu ngoặc vì sẽ không có dấu đóng ngay cuối là số) hoặc toán tử
             int indexBracket = statusBeforClick.lastIndexOf(EnumStatus.Bracket);
             int indexOper = statusBeforClick.lastIndexOf(EnumStatus.OperatorClick);
-            if (indexBracket == -1 && indexOper == -1) {
+            int indexNeg = statusBeforClick.lastIndexOf(EnumStatus.Negativite);
+            if (indexNeg>Math.max(indexBracket,indexOper))
+            {
+                statusBeforClick.remove(indexNeg);
+                int indexNegRemove = expression.lastIndexOf("(-");
+                expression = expression.substring(0, indexNegRemove) + expression.substring(indexNegRemove + 2);
+                braketOpen--;
+                negavitionOpen =false;
+            }
+            else if (indexBracket == -1 && indexOper == -1) { //chèn negativite
                 statusBeforClick.add(0, EnumStatus.Negativite);
                 expression = "(-" + expression;
-            } else if (indexBracket > indexOper) {//chèn dấu (- sau dấu (
-                statusBeforClick.add(indexBracket + 1, EnumStatus.Negativite);
-                expression = expression.substring(0, indexBracket + 1) + "(-" + expression.substring(indexBracket + 1);
-            } else {
-                statusBeforClick.add(indexOper + 1, EnumStatus.Negativite);
-                expression = expression.substring(0, indexOper + 1) + "(-" + expression.substring(indexOper + 1);
+                negavitionOpen=false;
+                braketOpen++;
+            } else{//chèn dấu (- sau dấu ( hoặc đấu + - * / nếu cái nào ở sau cùng
+                int indeMax=Math.max(indexBracket,indexOper);
+                statusBeforClick.add(indeMax + 1, EnumStatus.Negativite);
+                int indexBrack = expression.lastIndexOf("(");
+                int indexOpera = Math.max(Math.max(expression.lastIndexOf("+"),expression.lastIndexOf("-")),
+                        Math.max(expression.lastIndexOf("*"),expression.lastIndexOf("/")));
+                int indeMaxStr=Math.max(indexBrack,indexOpera);
+                expression = expression.substring(0, indeMaxStr + 1) + "(-" + expression.substring(indeMaxStr + 1);
+                //do thêm dấu (- nên có một dấu ( tăng thêm
+                braketOpen++;
+                negavitionOpen =true;
             }
-            //do thêm dấu (- nên có một dấu ( tăng thêm
-            braketOpen++;
         }
-        negavitionOpen = !negavitionOpen;
         viewExpression();
     }
 
@@ -335,8 +352,9 @@ public class MainActivity extends AppCompatActivity {
         String temp = expression;
         Stack<EnumStatus> tempStatus = new Stack<EnumStatus>();
         tempStatus = statusBeforClick;
+        int tempBraketOpen=braketOpen;
+        boolean tempDot=dotFloat;
         checkResult = true;
-
         if (statusBeforClick.isEmpty()) {
             return;
         }
@@ -386,13 +404,12 @@ public class MainActivity extends AppCompatActivity {
                 viewError("\n" + expression);
             }
             expression = temp;
-            temp = temp.replace("/", "<font COLOR='BLUE'>" + "÷" + "</font>");
-            temp = temp.replace("*", "<font COLOR='BLUE'>" + "x" + "</font>");
-            temp = temp.replace("+", "<font COLOR='BLUE'>" + "+" + "</font>");
-            temp = temp.replace("-", "<font COLOR='BLUE'>" + "-" + "</font>");
-            tempStatus = statusBeforClick;
-            return;
+            braketOpen=tempBraketOpen;
+            dotFloat=tempDot;
+            statusBeforClick=tempStatus;
         }
+            return;
+
     }
 
     //xử lý sau khi ấn finish click
